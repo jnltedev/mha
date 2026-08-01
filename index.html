@@ -12,6 +12,18 @@
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+<div class="loading-overlay hidden" id="loadingOverlay" role="alert" aria-live="assertive" aria-busy="true">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <h2 class="loading-title">Analyzing Header</h2>
+    <p class="loading-step" id="loadingStep">Reading input…</p>
+    <div class="loading-bar-track">
+      <div class="loading-bar-fill" id="loadingBarFill"></div>
+    </div>
+    <p class="loading-time" id="loadingTime">Please wait…</p>
+  </div>
+</div>
+
 <div class="wrap">
 
   <div class="topbar">

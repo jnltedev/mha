@@ -9,6 +9,10 @@ import { renderHops } from './renderAnalysis.js';
 import { openShareModal } from './shareModal.js';
 
 const els = {
+  loadingOverlay: document.getElementById('loadingOverlay'),
+  loadingStep: document.getElementById('loadingStep'),
+  loadingBarFill: document.getElementById('loadingBarFill'),
+  loadingTime: document.getElementById('loadingTime'),
   inputA: document.getElementById('inputA'),
   inputB: document.getElementById('inputB'),
   fileA: document.getElementById('fileA'),
@@ -25,8 +29,6 @@ const els = {
   clearFileBtnB: document.getElementById('clearFileBtnB'),
   compareBtn: document.getElementById('compareBtn'),
   clearCompareBtn: document.getElementById('clearCompareBtn'),
-  statusLine: document.getElementById('statusLine'),
-  statusText: document.getElementById('statusText'),
   errorBanner: document.getElementById('errorBanner'),
   compareResults: document.getElementById('compareResults'),
   verdictCompareTable: document.getElementById('verdictCompareTable'),
@@ -128,15 +130,6 @@ function clearFile(slot) {
   els[`filenameChip${slot}`].classList.remove('show');
 }
 
-function setStatus(text) {
-  if (text === null) {
-    els.statusLine.classList.add('hidden');
-    return;
-  }
-  els.statusLine.classList.remove('hidden');
-  els.statusText.textContent = text;
-}
-
 function showError(message) {
   els.errorBanner.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
@@ -147,6 +140,50 @@ function showError(message) {
 function hideError() {
   els.errorBanner.classList.add('hidden');
   els.errorBanner.innerHTML = '';
+}
+
+// ---------- Comparing overlay (locks the page for at least MIN_LOADING_MS) ----------
+
+const MIN_LOADING_MS = 1500;
+let loadingStartTime = 0;
+let loadingTimerId = null;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function showAnalyzingOverlay() {
+  loadingStartTime = Date.now();
+  setAnalyzingStep('Reading input…', 5);
+  els.loadingOverlay.classList.remove('hidden');
+  document.body.classList.add('loading-locked');
+  if (loadingTimerId) clearInterval(loadingTimerId);
+  loadingTimerId = setInterval(updateLoadingTime, 100);
+  updateLoadingTime();
+}
+
+function updateLoadingTime() {
+  const remaining = MIN_LOADING_MS - (Date.now() - loadingStartTime);
+  els.loadingTime.textContent = remaining > 0
+    ? `Estimated time remaining: ${(remaining / 1000).toFixed(1)}s`
+    : 'Finishing up…';
+}
+
+function setAnalyzingStep(text, pct) {
+  els.loadingStep.textContent = text;
+  if (typeof pct === 'number') els.loadingBarFill.style.width = `${pct}%`;
+}
+
+async function hideAnalyzingOverlay() {
+  const remaining = MIN_LOADING_MS - (Date.now() - loadingStartTime);
+  setAnalyzingStep(remaining > 0 ? 'Finalizing…' : 'Done', 100);
+  if (remaining > 0) await delay(remaining);
+  if (loadingTimerId) {
+    clearInterval(loadingTimerId);
+    loadingTimerId = null;
+  }
+  els.loadingOverlay.classList.add('hidden');
+  document.body.classList.remove('loading-locked');
 }
 
 async function loadSide(slot) {
@@ -209,9 +246,11 @@ async function analyzeSide(headerBlock, body) {
 }
 
 async function compare() {
-  els.compareBtn.disabled = true;
   hideError();
+  els.compareBtn.disabled = true;
+  showAnalyzingOverlay();
   try {
+    setAnalyzingStep('Loading messages…', 15);
     const [rawA, rawB] = await Promise.all([loadSide('A'), loadSide('B')]);
     if (!rawA || !rawA.headerBlock.trim()) {
       showError('Message A is empty — paste headers or upload a file for message A.');
@@ -222,11 +261,12 @@ async function compare() {
       return;
     }
 
-    setStatus('Checking message A (SPF / DKIM / DMARC)…');
+    setAnalyzingStep('Checking message A (SPF / DKIM / DMARC)…', 45);
     const a = await analyzeSide(rawA.headerBlock, rawA.body);
-    setStatus('Checking message B (SPF / DKIM / DMARC)…');
+    setAnalyzingStep('Checking message B (SPF / DKIM / DMARC)…', 75);
     const b = await analyzeSide(rawB.headerBlock, rawB.body);
 
+    setAnalyzingStep('Rendering comparison…', 92);
     els.compareResults.classList.remove('hidden');
     renderVerdictCompare(els, a, b);
     renderHops(hopElsA, a.hops);
@@ -238,7 +278,7 @@ async function compare() {
     console.error(e);
     showError(`Something went wrong while comparing: <b>${escapeHTML(e.message)}</b>.`);
   } finally {
-    setStatus(null);
+    await hideAnalyzingOverlay();
     els.compareBtn.disabled = false;
   }
 }

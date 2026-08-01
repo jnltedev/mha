@@ -26,6 +26,10 @@ import {
 import { openShareModal } from './shareModal.js';
 
 const els = {
+  loadingOverlay: document.getElementById('loadingOverlay'),
+  loadingStep: document.getElementById('loadingStep'),
+  loadingBarFill: document.getElementById('loadingBarFill'),
+  loadingTime: document.getElementById('loadingTime'),
   tabBtns: document.querySelectorAll('#input-panel .tab-btn'),
   tabPanels: document.querySelectorAll('.tab-panel'),
   headerViewTabs: document.getElementById('headerViewTabs'),
@@ -183,22 +187,73 @@ function hideError() {
   els.errorBanner.innerHTML = '';
 }
 
+// ---------- Analyzing overlay (locks the page for at least MIN_LOADING_MS) ----------
+
+const MIN_LOADING_MS = 2000;
+let loadingStartTime = 0;
+let loadingTimerId = null;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function showAnalyzingOverlay() {
+  loadingStartTime = Date.now();
+  setAnalyzingStep('Reading input…', 4);
+  els.loadingOverlay.classList.remove('hidden');
+  document.body.classList.add('loading-locked');
+  if (loadingTimerId) clearInterval(loadingTimerId);
+  loadingTimerId = setInterval(updateLoadingTime, 100);
+  updateLoadingTime();
+}
+
+function updateLoadingTime() {
+  const remaining = MIN_LOADING_MS - (Date.now() - loadingStartTime);
+  els.loadingTime.textContent = remaining > 0
+    ? `Estimated time remaining: ${(remaining / 1000).toFixed(1)}s`
+    : 'Finishing up…';
+}
+
+function setAnalyzingStep(text, pct) {
+  els.loadingStep.textContent = text;
+  if (typeof pct === 'number') els.loadingBarFill.style.width = `${pct}%`;
+}
+
+async function hideAnalyzingOverlay() {
+  const remaining = MIN_LOADING_MS - (Date.now() - loadingStartTime);
+  setAnalyzingStep(remaining > 0 ? 'Finalizing…' : 'Done', 100);
+  if (remaining > 0) await delay(remaining);
+  if (loadingTimerId) {
+    clearInterval(loadingTimerId);
+    loadingTimerId = null;
+  }
+  els.loadingOverlay.classList.add('hidden');
+  document.body.classList.remove('loading-locked');
+}
+
 async function analyze() {
-  els.analyzeBtn.disabled = true;
   hideError();
+
+  if (state.activeTab === 'upload' && !state.file) {
+    showError('Please choose an .eml or .msg file first, or switch to the "Paste headers" tab.');
+    return;
+  }
+  if (state.activeTab === 'paste' && (!els.pasteInput.value || !els.pasteInput.value.trim())) {
+    showError('Paste some headers first, or switch to the "Upload .eml / .msg" tab.');
+    return;
+  }
+
+  els.analyzeBtn.disabled = true;
+  showAnalyzingOverlay();
   try {
     let headerBlock, body, note = null;
 
     if (state.activeTab === 'upload') {
-      if (!state.file) {
-        showError('Please choose an .eml or .msg file first, or switch to the "Paste headers" tab.');
-        return;
-      }
-      setStatus('Reading file…');
+      setAnalyzingStep('Reading file…', 10);
       const name = state.file.name.toLowerCase();
       if (name.endsWith('.msg')) {
         const buf = await state.file.arrayBuffer();
-        setStatus('Parsing .msg file…');
+        setAnalyzingStep('Parsing .msg file…', 20);
         const parsed = await parseMSG(buf);
         headerBlock = parsed.headerBlock;
         body = parsed.body;
@@ -210,11 +265,8 @@ async function analyze() {
         body = parsed.body;
       }
     } else {
+      setAnalyzingStep('Reading pasted headers…', 10);
       const raw = els.pasteInput.value;
-      if (!raw || !raw.trim()) {
-        showError('Paste some headers first, or switch to the "Upload .eml / .msg" tab.');
-        return;
-      }
       const parsed = splitHeadersAndBody(raw);
       headerBlock = parsed.headerBlock;
       body = parsed.body;
@@ -228,6 +280,7 @@ async function analyze() {
       return;
     }
 
+    setAnalyzingStep('Parsing headers…', 28);
     const headers = parseHeaders(headerBlock);
     state.lastHeaders = headers;
 
@@ -239,7 +292,7 @@ async function analyze() {
         'This usually means the input wasn\'t a valid header block/EML file, or a DNS lookup failed — check the browser console for details and try again.'
     );
   } finally {
-    setStatus(null);
+    await hideAnalyzingOverlay();
     els.analyzeBtn.disabled = false;
   }
 }
@@ -250,6 +303,7 @@ async function runAnalysis(headers, body, headerBlock, note) {
   els.results.classList.remove('hidden');
   els.featureStrip.classList.add('hidden');
 
+  setAnalyzingStep('Parsing received chain…', 35);
   const hops = parseReceivedChain(headers);
   renderOverview(els, headers, note);
   renderHops(els, hops);
@@ -266,23 +320,24 @@ async function runAnalysis(headers, body, headerBlock, note) {
 
   const authResultsReported = parseAuthenticationResults(headers);
 
-  setStatus('Checking SPF…');
+  setAnalyzingStep('Checking SPF…', 45);
   const spf = await checkSPF(spfInputs.domain, spfInputs.ip);
   spf.ipSource = spfInputs.ipSource;
   spf.domainSource = spfInputs.domainSource;
 
-  setStatus('Verifying DKIM signature(s)…');
+  setAnalyzingStep('Verifying DKIM signature(s)…', 62);
   const dkimResults = await checkDKIMSignatures(headers, body);
 
-  setStatus('Checking DMARC…');
+  setAnalyzingStep('Checking DMARC…', 78);
   const dmarc = await checkDMARC(fromDomain);
   const alignment = dmarc.result === 'found'
     ? evaluateDMARCAlignment({ dmarcTags: dmarc.tags, fromDomain, spfResult: spf.result, spfDomain: spf.domain, dkimResults })
     : null;
 
-  setStatus('Checking BIMI…');
+  setAnalyzingStep('Checking BIMI…', 90);
   const bimi = await checkBIMI(fromDomain);
 
+  setAnalyzingStep('Rendering results…', 97);
   const spamResults = parseSpamHeaders(headers);
   renderSpamPanel(els, spamResults);
 
