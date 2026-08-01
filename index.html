@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Message Header Analyzer</title>
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236d8dff'/%3E%3Cstop offset='1' stop-color='%2338e6c0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' rx='11' fill='url(%23g)'/%3E%3Ctext x='20' y='27' font-family='Arial,Helvetica,sans-serif' font-size='16' font-weight='700' fill='%230b0d12' text-anchor='middle'%3EMH%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">MH</div>
+      <div>
+        <h1>Message Header Analyzer</h1>
+        <p>Parse headers, verify SPF / DKIM / DMARC, inspect the delivery path</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <a class="btn btn-sm" href="/compare">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M4 8h4M16 8h4M4 16h4M16 16h4"/></svg>
+        Compare two headers
+      </a>
+      <a class="bmc-btn" href="https://www.buymeacoffee.com/jnolte" target="_blank" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+        Buy me an battery
+      </a>
+    </div>
+  </div>
+
+  <section class="panel" id="input-panel">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="upload">Upload .eml / .msg</button>
+      <button class="tab-btn" data-tab="paste">Paste headers</button>
+    </div>
+
+    <div class="tab-panel active" data-tab-panel="upload">
+      <label class="dropzone" id="dropzone" tabindex="0">
+        <div class="dropzone-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        </div>
+        <p class="dropzone-title">Drop an .eml or .msg file here</p>
+        <p class="dropzone-sub">or click to browse — nothing is uploaded anywhere, parsing happens locally</p>
+        <input type="file" id="fileInput" accept=".eml,.msg,.txt,message/rfc822" />
+      </label>
+      <div class="filename-chip" id="filenameChip">
+        <span id="filenameText"></span>
+        <button class="btn btn-ghost btn-sm" id="clearFileBtn" type="button">✕</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-tab-panel="paste">
+      <textarea id="pasteInput" placeholder="Paste raw email headers (or a full RFC822 message) here…&#10;&#10;Delivered-To: you@example.com&#10;Received: from mail.example.com …&#10;From: Someone &lt;someone@example.com&gt;&#10;..."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="analyzeBtn">Analyze</button>
+      <button class="btn btn-ghost" id="sampleBtn" type="button">Load sample header</button>
+      <button class="btn btn-ghost" id="clearBtn" type="button">Clear</button>
+    </div>
+
+    <div class="status-line hidden" id="statusLine">
+      <div class="spinner"></div>
+      <span id="statusText">Analyzing…</span>
+    </div>
+
+    <div class="error-banner hidden" id="errorBanner"></div>
+  </section>
+
+  <div class="feature-strip" id="featureStrip">
+    <div class="feature-tile">
+      <div class="feature-tile-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h3>Live SPF / DKIM / DMARC</h3>
+        <p>Real DNS lookups and RSA signature verification — not just a text parser.</p>
+      </div>
+    </div>
+    <div class="feature-tile">
+      <div class="feature-tile-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 6l8 7 8-7"/></svg>
+      </div>
+      <div>
+        <h3>Paste, .eml or .msg</h3>
+        <p>Analyze raw headers, a full RFC822 message, or an Outlook export.</p>
+      </div>
+    </div>
+    <div class="feature-tile">
+      <div class="feature-tile-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <div>
+        <h3>100% client-side</h3>
+        <p>No backend. Nothing you paste or upload ever leaves your browser.</p>
+      </div>
+    </div>
+  </div>
+
+  <section id="results" class="hidden">
+
+    <div class="panel">
+      <div class="panel-title-row">
+        <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg> Verdict</p>
+        <button class="btn btn-sm hidden" id="shareBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-3.9M8.6 13.5l6.8 3.9"/></svg>
+          Share
+        </button>
+      </div>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div class="panel split-panel">
+      <div class="split-col">
+        <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 6l8 7 8-7"/></svg> Message overview</p>
+        <table class="kv" id="overviewTable"></table>
+      </div>
+      <div class="split-col">
+        <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Received chain (<span id="hopCount">0</span> hops)</p>
+        <div class="hop-list" id="hopList"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Authentication details</p>
+      <div id="authAccordion"></div>
+    </div>
+
+    <div class="panel hidden" id="spamPanel">
+      <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg> Spam filter results</p>
+      <div id="spamAccordion"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title-row">
+        <p class="panel-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Headers</p>
+        <div class="tabs tabs-sm" id="headerViewTabs">
+          <button class="tab-btn active" data-view="other" type="button">Other headers</button>
+          <button class="tab-btn" data-view="all" type="button">All headers</button>
+        </div>
+      </div>
+      <input type="text" class="header-search" id="headerSearch" placeholder="Filter headers by name or value…" />
+      <table class="header-table" id="headerTable"></table>
+      <div class="raw-toggle-wrap">
+        <button class="btn btn-ghost btn-sm" id="toggleRawBtn" type="button">Show raw source</button>
+      </div>
+      <pre class="raw-source hidden" id="rawSource"></pre>
+    </div>
+
+  </section>
+
+  <footer>
+    <div class="footer-bottom">
+      <span>© 2020–<span id="currentYear">2026</span> <a href="https://jnlte.de" target="_blank" rel="noopener">Justin Nolte</a></span>
+      <span class="footer-sep">·</span>
+      <a class="icon-link" href="https://github.com/jnltedev/mha" target="_blank" rel="noopener" aria-label="GitHub">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.79-.25.79-.55 0-.27-.01-1.16-.02-2.11-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 2.87-.39c.97 0 1.95.13 2.87.39 2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.74.11 3.03.73.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .3.21.66.79.55A10.52 10.52 0 0 0 23.5 12c0-6.35-5.15-11.5-11.5-11.5z"/></svg>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

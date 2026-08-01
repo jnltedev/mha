@@ -1,0 +1,50 @@
+services:
+  mha:
+    build: .
+    container_name: mha
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      PORT: ${PORT:-3000}
+      TZ: ${TZ:-UTC}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build: ./server
+    container_name: mha-api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-mha}:${POSTGRES_PASSWORD:-mha}@db:5432/${POSTGRES_DB:-mha}
+      IPDB_API_KEY: ${IPDB_API_KEY:-}
+      IPDB_BASE_URL: ${IPDB_BASE_URL:-http://host.docker.internal:3006/api/v1}
+      APP_URL: ${APP_URL:-}
+      PORT: 8080
+      TZ: ${TZ:-UTC}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: mha-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mha}
+      POSTGRES_DB: ${POSTGRES_DB:-mha}
+      TZ: ${TZ:-UTC}
+      PGTZ: ${TZ:-UTC}
+    volumes:
+      - mha-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mha} -d ${POSTGRES_DB:-mha}"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mha-db-data:
