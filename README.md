@@ -39,8 +39,8 @@ All configuration lives in `.env` (copy `.env.example` to get started — every 
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `3000` | Single source of truth for the app's port — propagates to nginx, its healthcheck, and the Docker port mapping. Change this one value, nothing else. |
-| `IPDB_API_KEY` | *(empty)* | API key for an IPDB-style IP lookup service, used to show a country flag per hop. Without it, flags are silently skipped — everything else still works. Get a free key at [ipdb.jnlte.de](https://ipdb.jnlte.de) ([API docs](https://ipdb.jnlte.de/api)) — a free public instance provided alongside this project, not affiliated with the original IPDB project — or point `IPDB_BASE_URL` at your own. |
-| `IPDB_BASE_URL` | `https://ipdb.jnlte.de/api/v1` | Base URL of the IPDB instance. |
+| `IPDB_API_KEY` | *(empty)* | API key for an IPDB-style IP lookup service, used to show a country flag per hop. Without it, flags are silently skipped — everything else still works. Get a free key at [avatoris.com](https://avatoris.com) ([API docs](https://avatoris.com/api)) — a free public instance provided alongside this project, not affiliated with the original IPDB project — or point `IPDB_BASE_URL` at your own. |
+| `IPDB_BASE_URL` | `https://avatoris.com/api/v1` | Base URL of the IPDB instance. |
 | `APP_URL` | *(empty → inferred from the request)* | Public URL the app is reachable at, used to build Share links. Set this if you're behind a reverse proxy that terminates TLS — otherwise share links would be generated as `http://` instead of `https://`. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `mha` / `mha` / `mha` | Local Postgres credentials — only reachable from inside the Docker network, used solely for Share storage. |
 | `TZ` | `UTC` | Default timezone for container logs and the Postgres session. Times shown in the UI (Received chain, share expiry) always use each *visitor's own browser timezone* regardless of this setting. |
