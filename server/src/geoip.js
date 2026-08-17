@@ -1,11 +1,12 @@
+const IPDB_BASE_URL = 'https://avatoris.com/api/v1';
+
 export async function lookupIP(ip) {
   const apiKey = process.env.IPDB_API_KEY;
   if (!apiKey) {
     throw Object.assign(new Error('IPDB_API_KEY not configured'), { code: 'NO_API_KEY' });
   }
 
-  const base = process.env.IPDB_BASE_URL;
-  const res = await fetch(`${base}/lookup/${encodeURIComponent(ip)}`, {
+  const res = await fetch(`${IPDB_BASE_URL}/lookup/${encodeURIComponent(ip)}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
 

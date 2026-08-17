@@ -17,12 +17,9 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-mha}:${POSTGRES_PASSWORD:-mha}@db:5432/${POSTGRES_DB:-mha}
       IPDB_API_KEY: ${IPDB_API_KEY:-}
-      IPDB_BASE_URL: ${IPDB_BASE_URL:-http://host.docker.internal:3006/api/v1}
       APP_URL: ${APP_URL:-}
       PORT: 8080
       TZ: ${TZ:-UTC}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
