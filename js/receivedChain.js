@@ -18,7 +18,7 @@ function parseHop(value, index) {
   const fromHostMatch = value.match(/from\s+(\S+)/i);
   const fromDetailMatch = value.match(/from\s+\S+\s+(\([^)]*\))/i);
   const byMatch = value.match(/by\s+(\S+)/i);
-  const ipMatch = value.match(/\[([0-9a-fA-F.:]+)\]/);
+  const ipMatch = value.match(/\[(?:IPv6:)?([0-9a-fA-F.:]+)\]/i);
   const dateMatch = value.match(/;\s*(.+)$/);
   let date = null;
   if (dateMatch) {
